@@ -4422,7 +4422,7 @@ def admin_dashboard():
 
         # الرسائل غير المقروءة من الطلاب للمشرف
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = 0",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = FALSE",
             (admin_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -4959,7 +4959,7 @@ def competitions():
             cur.execute("SELECT active FROM competitions WHERE id = %s", (toggle_id,))
             comp = cur.fetchone()
             if comp:
-                new_active = 1 if comp['active'] == 0 else 0
+                new_active = TRUE if comp['active'] == 0 else 0
                 cur2 = conn.cursor()
                 cur2.execute("UPDATE competitions SET active = %s WHERE id = %s", (new_active, toggle_id))
                 conn.commit()
@@ -5141,7 +5141,7 @@ def messages():
                 # تحديث حالة الرسائل غير المقروءة من الطالب
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
+                    "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
                     (student_id, admin_id)
                 )
                 conn.commit()
@@ -5274,13 +5274,13 @@ def student_dashboard():
 
         # عدد المسابقات
         cur.execute(
-            "SELECT COUNT(*) as total FROM competitions WHERE active = 1"
+            "SELECT COUNT(*) as total FROM competitions WHERE active = TRUE"
         )
         competitions_count = cur.fetchone()['total']
 
         # الرسائل غير المقروءة
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = 0 AND sender_type = 'admin'",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = FALSE AND sender_type = 'admin'",
             (student_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -5395,7 +5395,7 @@ def student_report():
             SELECT SUM(cg.grade) as total 
             FROM competition_grades cg
             JOIN competitions c ON c.id = cg.competition_id
-            WHERE cg.student_id = %s AND c.active = 1
+            WHERE cg.student_id = %s AND c.active = TRUE
         """, (student_id,))
         comp_grades = cur.fetchone()
         competitions_grade = comp_grades['total'] or 0
@@ -5431,7 +5431,7 @@ def student_competitions():
         student = cur.fetchone()
 
         cur.execute(
-            "SELECT * FROM competitions WHERE active = 1 ORDER BY date DESC"
+            "SELECT * FROM competitions WHERE active = TRUE ORDER BY date DESC"
         )
         competitions = cur.fetchall()
 
@@ -5505,7 +5505,7 @@ def student_messages():
             # تحديث حالة الرسائل المقروءة
             cur2 = conn.cursor()
             cur2.execute(
-                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = 0",
+                "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = FALSE",
                 (admin_id, student_id)
             )
             conn.commit()
@@ -5538,7 +5538,7 @@ def student_messages():
                 # تحديث حالة الرسائل المقروءة
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
+                    "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
                     (selected_id, student_id)
                 )
                 conn.commit()
