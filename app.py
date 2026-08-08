@@ -250,6 +250,7 @@ ADMIN_LOGIN_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>دخول المشرف</title>
     <style>
@@ -388,6 +389,7 @@ STUDENT_LOGIN_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>دخول الطالب</title>
     <style>
@@ -526,6 +528,7 @@ STUDENT_REGISTER_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل طالب جديد</title>
     <style>
@@ -690,6 +693,7 @@ ADMIN_DASHBOARD_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
     <style>
@@ -976,6 +980,7 @@ MANAGE_STUDENTS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة الطلاب</title>
     <style>
@@ -1237,6 +1242,7 @@ REGISTRATION_REQUESTS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>طلبات التسجيل</title>
     <style>
@@ -1411,7 +1417,7 @@ REGISTRATION_REQUESTS_HTML = '''
                             <td>{{ req.phone or '-' }}</td>
                             <td>{{ req.parent_phone or '-' }}</td>
                             <td>{{ req.address or '-' }}</td>
-                            <td>{{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '' }}</td>
+                            <td>{{ req.created_at[:10] }}</td>
                             <td>
                                 <span class="status-badge status-{{ req.status }}">
                                     {% if req.status == 'pending' %}⏳ معلق
@@ -1447,6 +1453,7 @@ EVALUATION_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>التقييم اليومي</title>
     <style>
@@ -1732,6 +1739,7 @@ HOMEWORK_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الواجبات</title>
     <style>
@@ -1987,6 +1995,7 @@ COMPETITIONS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>المسابقات</title>
     <style>
@@ -2231,6 +2240,7 @@ COMPETITION_GRADES_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>درجات المسابقات</title>
     <style>
@@ -2461,6 +2471,7 @@ MESSAGES_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الرسائل</title>
     <style>
@@ -2698,7 +2709,7 @@ MESSAGES_HTML = '''
                         {% else %}
                         👨‍🎓 {{ msg.sender_name or 'طالب' }}
                         {% endif %}
-                        <span class="time">{{ msg.created_at.strftime('%H:%M') if msg.created_at else '' }}</span>
+                        <span class="time">{{ msg.created_at[11:16] if msg.created_at else '' }}</span>
                         {% if not msg.is_read and msg.sender_type != 'admin' %}
                         <span class="badge">جديد</span>
                         {% endif %}
@@ -2723,6 +2734,7 @@ STUDENT_DASHBOARD_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة الطالب</title>
     <style>
@@ -3001,6 +3013,7 @@ STUDENT_HOMEWORK_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واجباتي</title>
     <style>
@@ -3190,6 +3203,7 @@ STUDENT_REPORT_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تقريري</title>
     <style>
@@ -3409,6 +3423,7 @@ STUDENT_COMPETITIONS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مسابقاتي</title>
     <style>
@@ -3585,6 +3600,7 @@ STUDENT_MESSAGES_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>رسائلي</title>
     <style>
@@ -3831,7 +3847,7 @@ STUDENT_MESSAGES_HTML = '''
                         {% else %}
                         👨‍🎓 {{ msg.sender_name or 'طالب' }}
                         {% endif %}
-                        <span class="time">{{ msg.created_at.strftime('%H:%M') if msg.created_at else '' }}</span>
+                        <span class="time">{{ msg.created_at[11:16] if msg.created_at else '' }}</span>
                         {% if not msg.is_read and msg.sender_id != student_id %}
                         <span class="badge">جديد</span>
                         {% endif %}
@@ -3870,6 +3886,7 @@ STUDENT_PROFILE_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملفي الشخصي</title>
     <style>
@@ -4072,6 +4089,7 @@ ADMIN_PROFILE_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملف المشرف</title>
     <style>
@@ -4422,7 +4440,7 @@ def admin_dashboard():
 
         # الرسائل غير المقروءة من الطلاب للمشرف
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = FALSE",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = 0",
             (admin_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -4959,7 +4977,7 @@ def competitions():
             cur.execute("SELECT active FROM competitions WHERE id = %s", (toggle_id,))
             comp = cur.fetchone()
             if comp:
-                new_active = TRUE if comp['active'] == 0 else 0
+                new_active = 1 if comp['active'] == 0 else 0
                 cur2 = conn.cursor()
                 cur2.execute("UPDATE competitions SET active = %s WHERE id = %s", (new_active, toggle_id))
                 conn.commit()
@@ -5141,7 +5159,7 @@ def messages():
                 # تحديث حالة الرسائل غير المقروءة من الطالب
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
+                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
                     (student_id, admin_id)
                 )
                 conn.commit()
@@ -5274,13 +5292,13 @@ def student_dashboard():
 
         # عدد المسابقات
         cur.execute(
-            "SELECT COUNT(*) as total FROM competitions WHERE active = TRUE"
+            "SELECT COUNT(*) as total FROM competitions WHERE active = 1"
         )
         competitions_count = cur.fetchone()['total']
 
         # الرسائل غير المقروءة
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = FALSE AND sender_type = 'admin'",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = 0 AND sender_type = 'admin'",
             (student_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -5395,7 +5413,7 @@ def student_report():
             SELECT SUM(cg.grade) as total 
             FROM competition_grades cg
             JOIN competitions c ON c.id = cg.competition_id
-            WHERE cg.student_id = %s AND c.active = TRUE
+            WHERE cg.student_id = %s AND c.active = 1
         """, (student_id,))
         comp_grades = cur.fetchone()
         competitions_grade = comp_grades['total'] or 0
@@ -5431,7 +5449,7 @@ def student_competitions():
         student = cur.fetchone()
 
         cur.execute(
-            "SELECT * FROM competitions WHERE active = TRUE ORDER BY date DESC"
+            "SELECT * FROM competitions WHERE active = 1 ORDER BY date DESC"
         )
         competitions = cur.fetchall()
 
@@ -5505,7 +5523,7 @@ def student_messages():
             # تحديث حالة الرسائل المقروءة
             cur2 = conn.cursor()
             cur2.execute(
-                "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = FALSE",
+                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = 0",
                 (admin_id, student_id)
             )
             conn.commit()
@@ -5538,7 +5556,7 @@ def student_messages():
                 # تحديث حالة الرسائل المقروءة
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
+                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
                     (selected_id, student_id)
                 )
                 conn.commit()
