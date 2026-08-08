@@ -14,11 +14,9 @@ app.jinja_env.globals.update(datetime=datetime)
 app.jinja_env.globals.update(timedelta=timedelta)
 
 # === إعدادات PostgreSQL (من Render أو البيئة المحلية) ===
-# Render يعطيك DATABASE_URL تلقائياً عند ربط PostgreSQL
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Render يعطي الرابط بصيغة postgres:// لكن psycopg2 يحتاج postgresql://
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
@@ -41,12 +39,10 @@ else:
     }
 
 def get_db():
-    """الحصول على اتصال بقاعدة البيانات PostgreSQL"""
     conn = psycopg2.connect(**DB_CONFIG)
     return conn
 
 def query_one(conn, sql, params=()):
-    """تنفيذ استعلام وإرجاع صف واحد كـ dict"""
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(sql, params)
     row = cur.fetchone()
@@ -54,7 +50,6 @@ def query_one(conn, sql, params=()):
     return row
 
 def query_all(conn, sql, params=()):
-    """تنفيذ استعلام وإرجاع جميع الصفوف كـ list of dicts"""
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(sql, params)
     rows = cur.fetchall()
@@ -62,14 +57,12 @@ def query_all(conn, sql, params=()):
     return rows
 
 def execute_sql(conn, sql, params=()):
-    """تنفيذ استعلام INSERT/UPDATE/DELETE"""
     cur = conn.cursor()
     cur.execute(sql, params)
     conn.commit()
     cur.close()
 
 def init_db():
-    """تهيئة قاعدة البيانات PostgreSQL"""
     conn = get_db()
     cur = conn.cursor()
 
@@ -182,7 +175,6 @@ def init_db():
     )
     """)
 
-    # إضافة مشرف افتراضي
     cur.execute("SELECT * FROM admins WHERE username = %s", ('الشيخ',))
     if not cur.fetchone():
         hashed_pw = generate_password_hash('بومسلة العيد')
@@ -191,7 +183,6 @@ def init_db():
             ('الشيخ', hashed_pw, ' أبو عمر بومسلة العيد', 'admin@quran.com')
         )
 
-    # إضافة طالب افتراضي للتجربة
     cur.execute("SELECT * FROM students WHERE email = %s", ('yacinezaoui2010@gmail.com',))
     if not cur.fetchone():
         hashed_pw = generate_password_hash('*yacinezaoui2010#')
@@ -206,7 +197,6 @@ def init_db():
     print("✅ قاعدة البيانات PostgreSQL جاهزة!")
 
 def parse_nested_form(prefix):
-    """تحليل النماذج المتداخلة مثل evaluations[1][field]"""
     data = {}
     pattern = re.compile(rf'{re.escape(prefix)}\[(\d+)\]\[([^\]]+)\]')
     for key, value in request.form.items():
@@ -245,12 +235,456 @@ def format_date(date_str):
 def flash_message(message, category='info'):
     flash(message, category)
 
+# === الصفحة الرئيسية المدمجة ===
+HOME_HTML = """
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حلقتي زتاي — نظام إدارة الحلقة القرآنية</title>
+    <link rel="icon" href="/static/2.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #1a5f4a;
+            --primary-light: #2d8a6e;
+            --accent: #c9a227;
+            --accent-light: #e8c84a;
+            --dark: #0d1f1a;
+            --glass: rgba(255,255,255,0.06);
+            --glass-border: rgba(255,255,255,0.12);
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: var(--dark);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+        .bg-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(45,138,110,0.15), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(201,162,39,0.08), transparent);
+        }
+        .bg-pattern {
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .orb-1 {
+            width: 400px; height: 400px;
+            background: rgba(45,138,110,0.12);
+            top: -100px; right: -100px;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+        .orb-2 {
+            width: 300px; height: 300px;
+            background: rgba(201,162,39,0.08);
+            bottom: -50px; left: -50px;
+            animation: orbFloat 25s ease-in-out infinite reverse;
+        }
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 35px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+        .logo-wrap {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .logo-wrap::before {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            opacity: 0.3;
+            animation: pulseRing 3s ease-in-out infinite;
+        }
+        @keyframes pulseRing {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.08); opacity: 0.15; }
+        }
+        .logo-img {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255,255,255,0.15);
+            background: var(--glass);
+            padding: 6px;
+            position: relative;
+        }
+        .site-name {
+            font-size: 38px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-light), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .site-tagline {
+            font-size: 16px;
+            color: rgba(255,255,255,0.45);
+            font-weight: 400;
+        }
+
+        .motto-box {
+            max-width: 600px;
+            margin: 0 auto 30px;
+            padding: 22px 28px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            text-align: center;
+            position: relative;
+            animation: fadeInUp 0.8s ease-out 0.15s both;
+        }
+        .motto-box::before, .motto-box::after {
+            content: '﴿';
+            position: absolute;
+            color: var(--accent);
+            opacity: 0.4;
+            font-size: 24px;
+            font-family: 'Amiri', serif;
+        }
+        .motto-box::before { right: 12px; top: 8px; }
+        .motto-box::after { content: '﴾'; left: 12px; top: 8px; }
+        .motto-text {
+            font-family: 'Amiri', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-light);
+            line-height: 2;
+            text-shadow: 0 0 30px rgba(201,162,39,0.15);
+        }
+        .motto-ref {
+            font-size: 13px;
+            color: rgba(255,255,255,0.35);
+            margin-top: 6px;
+        }
+
+        .welcome-text {
+            text-align: center;
+            max-width: 560px;
+            margin: 0 auto 35px;
+            animation: fadeInUp 0.8s ease-out 0.3s both;
+        }
+        .welcome-text .greeting {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .welcome-text p {
+            font-size: 15px;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.9;
+        }
+
+        .divider {
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            border-radius: 2px;
+            margin: 0 auto 35px;
+            animation: fadeIn 1s ease-out 0.4s both;
+        }
+
+        .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: stretch;
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+            animation: fadeInUp 0.8s ease-out 0.5s both;
+        }
+        .card {
+            flex: 0 0 260px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 32px 24px;
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary-light), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card-center {
+            transform: scale(1.04);
+            border-color: rgba(45,138,110,0.3);
+            background: rgba(45,138,110,0.08);
+        }
+        .card-center:hover {
+            transform: translateY(-8px) scale(1.04);
+            border-color: rgba(45,138,110,0.5);
+            background: rgba(45,138,110,0.12);
+        }
+        .card-center::before {
+            opacity: 1;
+            background: linear-gradient(90deg, transparent, var(--primary-light), transparent);
+        }
+
+        .card-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(45,138,110,0.12);
+            border: 2px solid rgba(45,138,110,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 18px;
+            transition: all 0.3s ease;
+        }
+        .card:hover .card-icon {
+            background: rgba(45,138,110,0.2);
+            border-color: rgba(45,138,110,0.4);
+            transform: scale(1.08);
+        }
+
+        .card h3 {
+            font-size: 19px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .card p {
+            font-size: 13.5px;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.7;
+            margin-bottom: 20px;
+            flex: 1;
+        }
+        .card-btn {
+            display: inline-block;
+            padding: 10px 28px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: #fff;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .card:hover .card-btn {
+            background: transparent;
+            border-color: var(--primary-light);
+            color: var(--primary-light);
+        }
+
+        .features-bar {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 35px;
+            margin-top: 40px;
+            animation: fadeInUp 0.8s ease-out 0.7s both;
+        }
+        .feat-item {
+            text-align: center;
+            color: rgba(255,255,255,0.35);
+            font-size: 13px;
+        }
+        .feat-item span {
+            display: block;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: rgba(255,255,255,0.2);
+            font-size: 12px;
+            line-height: 1.8;
+            animation: fadeIn 1s ease-out 0.9s both;
+        }
+        .footer .creator {
+            color: rgba(255,255,255,0.3);
+            margin-top: 4px;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-25px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(25px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            .site-name { font-size: 28px; }
+            .motto-text { font-size: 16px; }
+            .welcome-text .greeting { font-size: 18px; }
+            .welcome-text p { font-size: 14px; }
+            .cards-row { flex-direction: column; align-items: center; gap: 15px; }
+            .card { flex: 0 0 auto; width: 100%; max-width: 320px; padding: 28px 20px; }
+            .card-center { transform: scale(1); }
+            .card-center:hover { transform: translateY(-8px) scale(1); }
+            .features-bar { gap: 20px; }
+            .container { padding: 25px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-layer"><div class="bg-pattern"></div></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="container">
+        <div class="header-section">
+            <div class="logo-wrap">
+                <img src="/static/2.png" alt="شعار الحلقة" class="logo-img" onerror="this.style.display='none'">
+            </div>
+            <h1 class="site-name">حلقتي زتاي</h1>
+            <p class="site-tagline">نظام إدارة الحلقة القرآنية الذكي</p>
+        </div>
+
+        <div class="motto-box">
+            <div class="motto-text">
+                خُذِ الْعَفْوَ وَأْمُرْ بِالْعُرْفِ وَأَعْرِضْ عَنِ الْجَاهِلِينَ
+            </div>
+            <div class="motto-ref">سورة الأعراف — الآية ١٩٩</div>
+        </div>
+
+        <div class="welcome-text">
+            <div class="greeting">أهلاً وسهلاً بكم في حلقتنا زتاي</div>
+            <p>
+                نرحب بكم في بيت القرآن، حيث نسعى معاً لحفظ كتاب الله وتجويده وتطبيق أخلاقه.
+                منبرٌ لتعليم القرآن الكريم وتربية النشء على منهج النبوة،
+                نُرَتِّلُ القرآنَ ترتيلاً في ظل إشراف فضيلة الشيخ أبو عمر بومسلة العيد.
+                بارك الله فيكم وجعل القرآن ربيع قلوبكم.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="cards-row">
+            <a href="{{ url_for('admin_login') }}" class="card">
+                <div class="card-icon">🕌</div>
+                <h3>دخول المشرف</h3>
+                <p>لوحة التحكم الشاملة لإدارة الطلاب والتقييمات والواجبات</p>
+                <span class="card-btn">تسجيل الدخول</span>
+            </a>
+
+            <a href="{{ url_for('student_login') }}" class="card card-center">
+                <div class="card-icon">📖</div>
+                <h3>دخول الطالب</h3>
+                <p>متابعة التقييمات والواجبات والمسابقات والتواصل مع المشرف</p>
+                <span class="card-btn">تسجيل الدخول</span>
+            </a>
+
+            <a href="{{ url_for('student_register') }}" class="card">
+                <div class="card-icon">📝</div>
+                <h3>تسجيل جديد</h3>
+                <p>انضم إلى الحلقة القرآنية وسجل بياناتك الآن بخطوات بسيطة</p>
+                <span class="card-btn">إنشاء حساب</span>
+            </a>
+        </div>
+
+        <div class="features-bar">
+            <div class="feat-item"><span>📊</span>تقييم يومي</div>
+            <div class="feat-item"><span>📚</span>واجبات</div>
+            <div class="feat-item"><span>🏆</span>مسابقات</div>
+            <div class="feat-item"><span>💬</span>رسائل</div>
+            <div class="feat-item"><span>📈</span>تقارير</div>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 حلقتي زتاي — جميع الحقوق محفوظة</p>
+            <p class="creator">تصميم وتطوير: زاوي طه أحمد ياسين</p>
+            <p style="margin-top:4px;">بإشراف الشيخ أبو عمر بومسلة العيد</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
 ADMIN_LOGIN_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>دخول المشرف</title>
     <style>
@@ -355,7 +789,7 @@ ADMIN_LOGIN_HTML = '''
         <div class="logo">🕌</div>
         <h1>دخول المشرف</h1>
         <p class="subtitle">نظام إدارة الحلقة القرآنية</p>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -363,7 +797,7 @@ ADMIN_LOGIN_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <form method="POST">
             <div class="form-group">
                 <label>اسم المستخدم</label>
@@ -388,8 +822,8 @@ STUDENT_LOGIN_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>دخول الطالب</title>
     <style>
@@ -494,7 +928,7 @@ STUDENT_LOGIN_HTML = '''
         <div class="logo">📖</div>
         <h1>دخول الطالب</h1>
         <p class="subtitle">نظام إدارة الحلقة القرآنية</p>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -502,7 +936,7 @@ STUDENT_LOGIN_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <form method="POST">
             <div class="form-group">
                 <label>البريد الإلكتروني</label>
@@ -527,8 +961,8 @@ STUDENT_REGISTER_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل طالب جديد</title>
     <style>
@@ -643,7 +1077,7 @@ STUDENT_REGISTER_HTML = '''
         <div class="logo">📝</div>
         <h1>تسجيل جديد</h1>
         <p class="subtitle">املأ البيانات للتسجيل في الحلقة القرآنية</p>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -651,7 +1085,7 @@ STUDENT_REGISTER_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <form method="POST">
             <div class="form-group">
                 <label>الاسم الكامل</label>
@@ -692,8 +1126,8 @@ ADMIN_DASHBOARD_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
     <style>
@@ -742,7 +1176,7 @@ ADMIN_DASHBOARD_HTML = '''
         .btn-secondary { background: #95a5a6; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
         .btn-lg { padding: 12px 24px; font-size: 16px; }
-        
+
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -770,7 +1204,7 @@ ADMIN_DASHBOARD_HTML = '''
         .card.highlight { background: linear-gradient(135deg, #1a2a6c, #2980b9); color: white; }
         .card.highlight .number { color: white; }
         .card.highlight .label { color: rgba(255,255,255,0.8); }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -791,7 +1225,7 @@ ADMIN_DASHBOARD_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -836,7 +1270,7 @@ ADMIN_DASHBOARD_HTML = '''
         .status-pending { background: #fff3cd; color: #856404; }
         .status-paid { background: #d4edda; color: #155724; }
         .status-unpaid { background: #f8d7da; color: #721c24; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -846,7 +1280,7 @@ ADMIN_DASHBOARD_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .gap-5 { gap: 5px; }
@@ -854,7 +1288,7 @@ ADMIN_DASHBOARD_HTML = '''
         .mb-10 { margin-bottom: 10px; }
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
             .cards { grid-template-columns: repeat(2, 1fr); }
@@ -875,7 +1309,7 @@ ADMIN_DASHBOARD_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -883,7 +1317,7 @@ ADMIN_DASHBOARD_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="cards">
             <div class="card highlight">
                 <div class="icon">👨‍🎓</div>
@@ -921,7 +1355,7 @@ ADMIN_DASHBOARD_HTML = '''
                 <div class="label">طلبات تسجيل</div>
             </div>
         </div>
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}" class="active">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -933,7 +1367,7 @@ ADMIN_DASHBOARD_HTML = '''
             <a href="{{ url_for('messages') }}">💬 رسائل</a>
             <a href="{{ url_for('admin_profile') }}">👤 الملف</a>
         </div>
-        
+
         <div class="section">
             <div class="flex flex-between">
                 <h2>📋 آخر التقييمات</h2>
@@ -979,8 +1413,8 @@ MANAGE_STUDENTS_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة الطلاب</title>
     <style>
@@ -1023,7 +1457,7 @@ MANAGE_STUDENTS_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-secondary { background: #95a5a6; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -1044,7 +1478,7 @@ MANAGE_STUDENTS_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -1091,7 +1525,7 @@ MANAGE_STUDENTS_HTML = '''
         .status-pending { background: #fff3cd; color: #856404; }
         .status-paid { background: #d4edda; color: #155724; }
         .status-unpaid { background: #f8d7da; color: #721c24; }
-        
+
         .form-inline { display: inline; }
         .form-inline input, .form-inline select {
             padding: 4px 8px;
@@ -1112,7 +1546,7 @@ MANAGE_STUDENTS_HTML = '''
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .gap-5 { gap: 5px; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -1122,7 +1556,7 @@ MANAGE_STUDENTS_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
             table { font-size: 11px; }
@@ -1139,7 +1573,7 @@ MANAGE_STUDENTS_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -1147,7 +1581,7 @@ MANAGE_STUDENTS_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}" class="active">👨‍🎓 إدارة الطلاب</a>
@@ -1158,7 +1592,7 @@ MANAGE_STUDENTS_HTML = '''
             <a href="{{ url_for('competition_grades') }}">📈 درجات المسابقات</a>
             <a href="{{ url_for('messages') }}">💬 رسائل</a>
         </div>
-        
+
         <div class="section">
             <div class="flex flex-between">
                 <h2>📋 قائمة الطلاب</h2>
@@ -1168,7 +1602,7 @@ MANAGE_STUDENTS_HTML = '''
                     <a href="?status=all" class="btn btn-secondary btn-sm">الكل</a>
                 </div>
             </div>
-            
+
             <form method="POST" class="mt-10">
                 <div class="table-responsive">
                     <table>
@@ -1241,8 +1675,8 @@ REGISTRATION_REQUESTS_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>طلبات التسجيل</title>
     <style>
@@ -1283,7 +1717,7 @@ REGISTRATION_REQUESTS_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
         .btn-warning { background: #f39c12; color: white; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -1304,7 +1738,7 @@ REGISTRATION_REQUESTS_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -1347,7 +1781,7 @@ REGISTRATION_REQUESTS_HTML = '''
         .status-pending { background: #fff3cd; color: #856404; }
         .status-accepted { background: #d4edda; color: #155724; }
         .status-rejected { background: #f8d7da; color: #721c24; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -1356,7 +1790,7 @@ REGISTRATION_REQUESTS_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .text-center { text-align: center; }
@@ -1373,7 +1807,7 @@ REGISTRATION_REQUESTS_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -1381,7 +1815,7 @@ REGISTRATION_REQUESTS_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -1390,7 +1824,7 @@ REGISTRATION_REQUESTS_HTML = '''
             <a href="{{ url_for('homework') }}">📚 واجبات</a>
             <a href="{{ url_for('competitions') }}">🏆 مسابقات</a>
         </div>
-        
+
         <div class="section">
             <h2>📋 الطلبات المعلقة</h2>
             <div class="table-responsive">
@@ -1452,8 +1886,8 @@ EVALUATION_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>التقييم اليومي</title>
     <style>
@@ -1496,7 +1930,7 @@ EVALUATION_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-secondary { background: #95a5a6; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -1517,7 +1951,7 @@ EVALUATION_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -1555,7 +1989,7 @@ EVALUATION_HTML = '''
         }
         table tr:hover { background: #f8f9fa; }
         table tr.sent { background: #e8f5e9; }
-        
+
         .form-inline input, .form-inline select, .form-inline textarea {
             padding: 4px 8px;
             border: 1px solid #ddd;
@@ -1569,7 +2003,7 @@ EVALUATION_HTML = '''
             outline: none;
         }
         .form-inline textarea { min-height: 35px; resize: vertical; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -1579,7 +2013,7 @@ EVALUATION_HTML = '''
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -1595,7 +2029,7 @@ EVALUATION_HTML = '''
         }
         .badge-success { background: #d4edda; color: #155724; }
         .badge-warning { background: #fff3cd; color: #856404; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
             table { font-size: 11px; }
@@ -1615,7 +2049,7 @@ EVALUATION_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -1623,7 +2057,7 @@ EVALUATION_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -1633,7 +2067,7 @@ EVALUATION_HTML = '''
             <a href="{{ url_for('competition_grades') }}">📈 درجات المسابقات</a>
             <a href="{{ url_for('messages') }}">💬 رسائل</a>
         </div>
-        
+
         <div class="section">
             <div class="flex flex-between">
                 <h2>📋 تقييم اليوم ({{ datetime.now().strftime('%Y-%m-%d') }})</h2>
@@ -1648,7 +2082,7 @@ EVALUATION_HTML = '''
                     </form>
                 </div>
             </div>
-            
+
             <form method="POST">
                 <div class="table-responsive">
                     <table>
@@ -1738,8 +2172,8 @@ HOMEWORK_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الواجبات</title>
     <style>
@@ -1781,7 +2215,7 @@ HOMEWORK_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-warning { background: #f39c12; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -1802,7 +2236,7 @@ HOMEWORK_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -1840,7 +2274,7 @@ HOMEWORK_HTML = '''
         }
         table tr:hover { background: #f8f9fa; }
         table tr.sent { background: #e8f5e9; }
-        
+
         .form-inline input, .form-inline textarea {
             padding: 4px 8px;
             border: 1px solid #ddd;
@@ -1850,7 +2284,7 @@ HOMEWORK_HTML = '''
             font-family: inherit;
         }
         .form-inline textarea { min-height: 35px; resize: vertical; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -1859,7 +2293,7 @@ HOMEWORK_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -1875,7 +2309,7 @@ HOMEWORK_HTML = '''
         }
         .badge-success { background: #d4edda; color: #155724; }
         .badge-warning { background: #fff3cd; color: #856404; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
             table { font-size: 11px; }
@@ -1895,7 +2329,7 @@ HOMEWORK_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -1903,7 +2337,7 @@ HOMEWORK_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -1913,7 +2347,7 @@ HOMEWORK_HTML = '''
             <a href="{{ url_for('competition_grades') }}">📈 درجات المسابقات</a>
             <a href="{{ url_for('messages') }}">💬 رسائل</a>
         </div>
-        
+
         <div class="section">
             <div class="flex flex-between">
                 <h2>📋 الواجبات</h2>
@@ -1928,7 +2362,7 @@ HOMEWORK_HTML = '''
                     </form>
                 </div>
             </div>
-            
+
             <form method="POST">
                 <div class="table-responsive">
                     <table>
@@ -1994,8 +2428,8 @@ COMPETITIONS_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>المسابقات</title>
     <style>
@@ -2038,7 +2472,7 @@ COMPETITIONS_HTML = '''
         .btn-warning { background: #f39c12; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
         .btn-lg { padding: 10px 20px; font-size: 16px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -2059,7 +2493,7 @@ COMPETITIONS_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -2093,7 +2527,7 @@ COMPETITIONS_HTML = '''
             border-bottom: 1px solid #e9ecef;
         }
         table tr:hover { background: #f8f9fa; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -2102,7 +2536,7 @@ COMPETITIONS_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -2124,7 +2558,7 @@ COMPETITIONS_HTML = '''
             border-color: #3498db;
             outline: none;
         }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -2139,7 +2573,7 @@ COMPETITIONS_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -2147,7 +2581,7 @@ COMPETITIONS_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -2157,7 +2591,7 @@ COMPETITIONS_HTML = '''
             <a href="{{ url_for('competition_grades') }}">📈 درجات المسابقات</a>
             <a href="{{ url_for('messages') }}">💬 رسائل</a>
         </div>
-        
+
         <div class="section">
             <h2>➕ إضافة مسابقة جديدة</h2>
             <form method="POST">
@@ -2183,7 +2617,7 @@ COMPETITIONS_HTML = '''
                 </div>
             </form>
         </div>
-        
+
         <div class="section">
             <h2>📋 قائمة المسابقات</h2>
             <div class="table-responsive">
@@ -2239,8 +2673,8 @@ COMPETITION_GRADES_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>درجات المسابقات</title>
     <style>
@@ -2281,7 +2715,7 @@ COMPETITION_GRADES_HTML = '''
         .btn-danger { background: #e74c3c; color: white; }
         .btn-info { background: #1abc9c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -2302,7 +2736,7 @@ COMPETITION_GRADES_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -2338,7 +2772,7 @@ COMPETITION_GRADES_HTML = '''
             vertical-align: middle;
         }
         table tr:hover { background: #f8f9fa; }
-        
+
         .form-inline input, .form-inline textarea {
             padding: 4px 8px;
             border: 1px solid #ddd;
@@ -2352,7 +2786,7 @@ COMPETITION_GRADES_HTML = '''
             outline: none;
         }
         .form-inline textarea { min-height: 30px; resize: vertical; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -2361,7 +2795,7 @@ COMPETITION_GRADES_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -2376,7 +2810,7 @@ COMPETITION_GRADES_HTML = '''
             font-weight: 600;
         }
         .badge-info { background: #d1ecf1; color: #0c5460; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
             table { font-size: 12px; }
@@ -2392,7 +2826,7 @@ COMPETITION_GRADES_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -2400,7 +2834,7 @@ COMPETITION_GRADES_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -2410,7 +2844,7 @@ COMPETITION_GRADES_HTML = '''
             <a href="{{ url_for('competition_grades') }}" class="active">📈 درجات المسابقات</a>
             <a href="{{ url_for('messages') }}">💬 رسائل</a>
         </div>
-        
+
         <div class="section">
             <div class="flex flex-between">
                 <h2>📋 درجات المسابقة: <span class="badge badge-info">{{ competition.name }}</span></h2>
@@ -2418,7 +2852,7 @@ COMPETITION_GRADES_HTML = '''
                     <a href="{{ url_for('competitions') }}" class="btn btn-secondary btn-sm">⬅️ رجوع</a>
                 </div>
             </div>
-            
+
             <form method="POST">
                 <input type="hidden" name="competition_id" value="{{ competition.id }}">
                 <div class="table-responsive">
@@ -2470,8 +2904,8 @@ MESSAGES_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الرسائل</title>
     <style>
@@ -2513,7 +2947,7 @@ MESSAGES_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-secondary { background: #95a5a6; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -2534,7 +2968,7 @@ MESSAGES_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #1a2a6c; }
         .nav-links a.active { background: #1a2a6c; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -2549,7 +2983,7 @@ MESSAGES_HTML = '''
             border-bottom: 2px solid #e8f0fe;
             padding-bottom: 10px;
         }
-        
+
         .messages-list {
             max-height: 500px;
             overflow-y: auto;
@@ -2598,7 +3032,7 @@ MESSAGES_HTML = '''
         .message-item.unread {
             background: #e8f0fe;
         }
-        
+
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 4px; font-weight: 600; color: #333; }
         .form-group input, .form-group select, .form-group textarea {
@@ -2614,7 +3048,7 @@ MESSAGES_HTML = '''
             outline: none;
         }
         .form-group textarea { min-height: 80px; resize: vertical; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -2623,7 +3057,7 @@ MESSAGES_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -2631,7 +3065,7 @@ MESSAGES_HTML = '''
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .gap-5 { gap: 5px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -2646,7 +3080,7 @@ MESSAGES_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -2654,7 +3088,7 @@ MESSAGES_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('admin_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('manage_students') }}">👨‍🎓 إدارة الطلاب</a>
@@ -2664,7 +3098,7 @@ MESSAGES_HTML = '''
             <a href="{{ url_for('competition_grades') }}">📈 درجات المسابقات</a>
             <a href="{{ url_for('messages') }}" class="active">💬 رسائل</a>
         </div>
-        
+
         <div class="section">
             <h2>📨 كتابة رسالة جديدة</h2>
             <form method="POST">
@@ -2687,7 +3121,7 @@ MESSAGES_HTML = '''
                 </div>
             </form>
         </div>
-        
+
         <div class="section">
             <h2>📋 محادثات الطلاب</h2>
             <div class="flex gap-5 mb-10">
@@ -2697,7 +3131,7 @@ MESSAGES_HTML = '''
                 </a>
                 {% endfor %}
             </div>
-            
+
             {% if selected_student %}
             <h3 style="margin:10px 0;color:#1a2a6c;">🗨️ محادثة مع: {{ selected_student.name }}</h3>
             <div class="messages-list">
@@ -2733,8 +3167,8 @@ STUDENT_DASHBOARD_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة الطالب</title>
     <style>
@@ -2779,7 +3213,7 @@ STUDENT_DASHBOARD_HTML = '''
         .btn-warning { background: #f39c12; color: white; }
         .btn-secondary { background: #95a5a6; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -2800,7 +3234,7 @@ STUDENT_DASHBOARD_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #134e5e; }
         .nav-links a.active { background: #134e5e; color: white; }
-        
+
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -2828,7 +3262,7 @@ STUDENT_DASHBOARD_HTML = '''
         .card.highlight { background: linear-gradient(135deg, #134e5e, #71b280); color: white; }
         .card.highlight .number { color: white; }
         .card.highlight .label { color: rgba(255,255,255,0.85); }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -2872,7 +3306,7 @@ STUDENT_DASHBOARD_HTML = '''
         .status-done { background: #d4edda; color: #155724; }
         .status-pending { background: #fff3cd; color: #856404; }
         .status-missed { background: #f8d7da; color: #721c24; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -2882,7 +3316,7 @@ STUDENT_DASHBOARD_HTML = '''
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -2890,7 +3324,7 @@ STUDENT_DASHBOARD_HTML = '''
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .gap-5 { gap: 5px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
             .cards { grid-template-columns: repeat(2, 1fr); }
@@ -2910,7 +3344,7 @@ STUDENT_DASHBOARD_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -2918,7 +3352,7 @@ STUDENT_DASHBOARD_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('student_dashboard') }}" class="active">📊 الرئيسية</a>
             <a href="{{ url_for('student_homework') }}">📚 واجباتي</a>
@@ -2927,7 +3361,7 @@ STUDENT_DASHBOARD_HTML = '''
             <a href="{{ url_for('student_messages') }}">💬 رسائلي</a>
             <a href="{{ url_for('student_profile') }}">👤 ملفي</a>
         </div>
-        
+
         <div class="cards">
             <div class="card highlight">
                 <div class="icon">⭐</div>
@@ -2955,7 +3389,7 @@ STUDENT_DASHBOARD_HTML = '''
                 <div class="label">رسائل غير مقروءة</div>
             </div>
         </div>
-        
+
         <div class="section">
             <h2>📋 تقييم اليوم</h2>
             {% if today_evaluation %}
@@ -2971,7 +3405,7 @@ STUDENT_DASHBOARD_HTML = '''
             <div class="text-center text-muted">لا يوجد تقييم لليوم</div>
             {% endif %}
         </div>
-        
+
         <div class="section">
             <h2>📚 آخر الواجبات</h2>
             <div class="table-responsive">
@@ -3012,8 +3446,8 @@ STUDENT_HOMEWORK_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واجباتي</title>
     <style>
@@ -3052,7 +3486,7 @@ STUDENT_HOMEWORK_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-danger { background: #e74c3c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -3073,7 +3507,7 @@ STUDENT_HOMEWORK_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #134e5e; }
         .nav-links a.active { background: #134e5e; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -3116,7 +3550,7 @@ STUDENT_HOMEWORK_HTML = '''
         }
         .status-done { background: #d4edda; color: #155724; }
         .status-pending { background: #fff3cd; color: #856404; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -3124,11 +3558,11 @@ STUDENT_HOMEWORK_HTML = '''
         }
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        
+
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .mt-10 { margin-top: 10px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -3143,7 +3577,7 @@ STUDENT_HOMEWORK_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -3151,7 +3585,7 @@ STUDENT_HOMEWORK_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('student_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('student_homework') }}" class="active">📚 واجباتي</a>
@@ -3159,7 +3593,7 @@ STUDENT_HOMEWORK_HTML = '''
             <a href="{{ url_for('student_competitions') }}">🏆 مسابقاتي</a>
             <a href="{{ url_for('student_messages') }}">💬 رسائلي</a>
         </div>
-        
+
         <div class="section">
             <h2>📋 قائمة الواجبات</h2>
             <div class="table-responsive">
@@ -3202,8 +3636,8 @@ STUDENT_REPORT_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تقريري</title>
     <style>
@@ -3242,7 +3676,7 @@ STUDENT_REPORT_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-danger { background: #e74c3c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -3263,7 +3697,7 @@ STUDENT_REPORT_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #134e5e; }
         .nav-links a.active { background: #134e5e; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -3278,7 +3712,7 @@ STUDENT_REPORT_HTML = '''
             border-bottom: 2px solid #e8f0fe;
             padding-bottom: 8px;
         }
-        
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -3301,7 +3735,7 @@ STUDENT_REPORT_HTML = '''
             font-size: 13px;
             margin-top: 3px;
         }
-        
+
         .table-responsive { overflow-x: auto; }
         table {
             width: 100%;
@@ -3322,11 +3756,11 @@ STUDENT_REPORT_HTML = '''
             text-align: center;
         }
         table tr:hover { background: #f8f9fa; }
-        
+
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .mt-10 { margin-top: 10px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -3341,7 +3775,7 @@ STUDENT_REPORT_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         <div class="nav-links">
             <a href="{{ url_for('student_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('student_homework') }}">📚 واجباتي</a>
@@ -3349,7 +3783,7 @@ STUDENT_REPORT_HTML = '''
             <a href="{{ url_for('student_competitions') }}">🏆 مسابقاتي</a>
             <a href="{{ url_for('student_messages') }}">💬 رسائلي</a>
         </div>
-        
+
         <div class="section">
             <h2>📈 إحصائيات عامة</h2>
             <div class="stats-grid">
@@ -3379,7 +3813,7 @@ STUDENT_REPORT_HTML = '''
                 </div>
             </div>
         </div>
-        
+
         <div class="section">
             <h2>📋 تفاصيل التقييمات</h2>
             <div class="table-responsive">
@@ -3422,8 +3856,8 @@ STUDENT_COMPETITIONS_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مسابقاتي</title>
     <style>
@@ -3462,7 +3896,7 @@ STUDENT_COMPETITIONS_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-danger { background: #e74c3c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -3483,7 +3917,7 @@ STUDENT_COMPETITIONS_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #134e5e; }
         .nav-links a.active { background: #134e5e; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -3518,11 +3952,11 @@ STUDENT_COMPETITIONS_HTML = '''
             text-align: center;
         }
         table tr:hover { background: #f8f9fa; }
-        
+
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .mt-10 { margin-top: 10px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -3537,7 +3971,7 @@ STUDENT_COMPETITIONS_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         <div class="nav-links">
             <a href="{{ url_for('student_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('student_homework') }}">📚 واجباتي</a>
@@ -3545,7 +3979,7 @@ STUDENT_COMPETITIONS_HTML = '''
             <a href="{{ url_for('student_competitions') }}" class="active">🏆 مسابقاتي</a>
             <a href="{{ url_for('student_messages') }}">💬 رسائلي</a>
         </div>
-        
+
         <div class="section">
             <h2>📋 قائمة المسابقات</h2>
             <div class="table-responsive">
@@ -3599,8 +4033,8 @@ STUDENT_MESSAGES_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>رسائلي</title>
     <style>
@@ -3642,7 +4076,7 @@ STUDENT_MESSAGES_HTML = '''
         .btn-info { background: #1abc9c; color: white; }
         .btn-secondary { background: #95a5a6; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -3663,7 +4097,7 @@ STUDENT_MESSAGES_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #134e5e; }
         .nav-links a.active { background: #134e5e; color: white; }
-        
+
         .section {
             background: white;
             padding: 20px;
@@ -3678,7 +4112,7 @@ STUDENT_MESSAGES_HTML = '''
             border-bottom: 2px solid #e8f0fe;
             padding-bottom: 8px;
         }
-        
+
         .messages-list {
             max-height: 400px;
             overflow-y: auto;
@@ -3727,7 +4161,7 @@ STUDENT_MESSAGES_HTML = '''
         .message-item.unread {
             background: #e8f0fe;
         }
-        
+
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 4px; font-weight: 600; color: #333; }
         .form-group input, .form-group select, .form-group textarea {
@@ -3743,7 +4177,7 @@ STUDENT_MESSAGES_HTML = '''
             outline: none;
         }
         .form-group textarea { min-height: 80px; resize: vertical; }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -3751,7 +4185,7 @@ STUDENT_MESSAGES_HTML = '''
         }
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
@@ -3759,7 +4193,7 @@ STUDENT_MESSAGES_HTML = '''
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
         .gap-5 { gap: 5px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -3774,7 +4208,7 @@ STUDENT_MESSAGES_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -3782,7 +4216,7 @@ STUDENT_MESSAGES_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('student_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('student_homework') }}">📚 واجباتي</a>
@@ -3790,7 +4224,7 @@ STUDENT_MESSAGES_HTML = '''
             <a href="{{ url_for('student_competitions') }}">🏆 مسابقاتي</a>
             <a href="{{ url_for('student_messages') }}" class="active">💬 رسائلي</a>
         </div>
-        
+
         <div class="section">
             <h2>📨 كتابة رسالة جديدة</h2>
             <form method="POST">
@@ -3820,7 +4254,7 @@ STUDENT_MESSAGES_HTML = '''
                 </div>
             </form>
         </div>
-        
+
         <div class="section">
             <h2>📋 محادثاتي</h2>
             <div class="flex gap-5 mb-10">
@@ -3831,7 +4265,7 @@ STUDENT_MESSAGES_HTML = '''
                 </a>
                 {% endfor %}
             </div>
-            
+
             {% if selected_other %}
             <h3 style="margin:10px 0;color:#134e5e;">🗨️ محادثة مع: 
                 {% if selected_other.type == 'admin' %}المشرف{% else %}{{ selected_other.name }}{% endif %}
@@ -3863,7 +4297,7 @@ STUDENT_MESSAGES_HTML = '''
             {% endif %}
         </div>
     </div>
-    
+
     <script>
     function toggleReceiver(select) {
         var studentSelect = document.getElementById('student_select');
@@ -3874,7 +4308,6 @@ STUDENT_MESSAGES_HTML = '''
             studentSelect.style.display = 'block';
         }
     }
-    // تهيئة
     toggleReceiver(document.querySelector('select[name="receiver_type"]'));
     </script>
 </body>
@@ -3885,8 +4318,8 @@ STUDENT_PROFILE_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملفي الشخصي</title>
     <style>
@@ -3926,7 +4359,7 @@ STUDENT_PROFILE_HTML = '''
         .btn-danger { background: #e74c3c; color: white; }
         .btn-info { background: #1abc9c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .nav-links {
             display: flex;
             flex-wrap: wrap;
@@ -3947,7 +4380,7 @@ STUDENT_PROFILE_HTML = '''
         }
         .nav-links a:hover { background: #e8f0fe; color: #134e5e; }
         .nav-links a.active { background: #134e5e; color: white; }
-        
+
         .section {
             background: white;
             padding: 25px;
@@ -3984,7 +4417,7 @@ STUDENT_PROFILE_HTML = '''
             border-radius: 8px;
             color: #666;
         }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -3993,13 +4426,13 @@ STUDENT_PROFILE_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
         .text-center { text-align: center; }
         .text-muted { color: #6c757d; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -4014,7 +4447,7 @@ STUDENT_PROFILE_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -4022,7 +4455,7 @@ STUDENT_PROFILE_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="{{ url_for('student_dashboard') }}">📊 الرئيسية</a>
             <a href="{{ url_for('student_homework') }}">📚 واجباتي</a>
@@ -4031,7 +4464,7 @@ STUDENT_PROFILE_HTML = '''
             <a href="{{ url_for('student_messages') }}">💬 رسائلي</a>
             <a href="{{ url_for('student_profile') }}" class="active">👤 ملفي</a>
         </div>
-        
+
         <div class="section">
             <h2>📋 معلوماتي الشخصية</h2>
             <form method="POST">
@@ -4063,7 +4496,7 @@ STUDENT_PROFILE_HTML = '''
                 <button type="submit" class="btn btn-primary">💾 تحديث الملف</button>
             </form>
         </div>
-        
+
         <div class="section">
             <h2>📊 معلومات إضافية</h2>
             <div class="form-group">
@@ -4088,8 +4521,8 @@ ADMIN_PROFILE_HTML = '''
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta charset="UTF-8">
+    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملف المشرف</title>
     <style>
@@ -4129,7 +4562,7 @@ ADMIN_PROFILE_HTML = '''
         .btn-danger { background: #e74c3c; color: white; }
         .btn-info { background: #1abc9c; color: white; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
-        
+
         .section {
             background: white;
             padding: 25px;
@@ -4164,7 +4597,7 @@ ADMIN_PROFILE_HTML = '''
             border-radius: 8px;
             color: #666;
         }
-        
+
         .alert {
             padding: 12px 20px;
             border-radius: 8px;
@@ -4173,11 +4606,11 @@ ADMIN_PROFILE_HTML = '''
         .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        
+
         .flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .flex-between { justify-content: space-between; }
         .mt-10 { margin-top: 10px; }
-        
+
         @media (max-width: 600px) {
             .header { flex-direction: column; text-align: center; }
         }
@@ -4192,7 +4625,7 @@ ADMIN_PROFILE_HTML = '''
                 <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">🚪 خروج</a>
             </div>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -4200,7 +4633,7 @@ ADMIN_PROFILE_HTML = '''
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="section">
             <h2>📋 معلوماتي</h2>
             <form method="POST">
@@ -4242,7 +4675,7 @@ def home():
         return redirect(url_for('admin_dashboard'))
     elif 'student_id' in session:
         return redirect(url_for('student_dashboard'))
-    return redirect(url_for('admin_login'))
+    return render_template_string(HOME_HTML)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -4336,7 +4769,6 @@ def student_register():
         conn = get_db()
         try:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            # التحقق من وجود طالب بنفس البريد
             cur.execute(
                 "SELECT id FROM students WHERE email = %s",
                 (email,)
@@ -4348,7 +4780,6 @@ def student_register():
                 flash('هذا البريد الإلكتروني مسجل بالفعل', 'danger')
                 return render_template_string(STUDENT_REGISTER_HTML)
 
-            # التحقق من وجود طلب سابق
             cur.execute(
                 "SELECT id, status FROM registration_requests WHERE email = %s",
                 (email,)
@@ -4363,7 +4794,6 @@ def student_register():
                     cur.close()
                     flash('تم قبول طلبك السابق، يمكنك تسجيل الدخول', 'info')
                 else:
-                    # مرفوض، يمكن إعادة التقديم
                     cur2 = conn.cursor()
                     cur2.execute(
                         "UPDATE registration_requests SET name = %s, password = %s, phone = %s, parent_phone = %s, address = %s, status = 'pending', created_at = CURRENT_TIMESTAMP WHERE email = %s",
@@ -4374,7 +4804,6 @@ def student_register():
                     flash('تم تحديث طلبك وإعادة إرساله، يرجى انتظار الموافقة', 'success')
                 return render_template_string(STUDENT_REGISTER_HTML)
 
-            # إنشاء طلب جديد
             cur2 = conn.cursor()
             cur2.execute("""
                 INSERT INTO registration_requests (name, email, password, phone, parent_phone, address, status)
@@ -4412,7 +4841,6 @@ def admin_dashboard():
 
     conn = get_db()
     try:
-        # إحصائيات
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
         cur.execute("SELECT COUNT(*) as total FROM students")
@@ -4438,9 +4866,8 @@ def admin_dashboard():
         )
         unsent_homework = cur.fetchone()['total']
 
-        # الرسائل غير المقروءة من الطلاب للمشرف
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = FALSE",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = 0",
             (admin_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -4450,7 +4877,6 @@ def admin_dashboard():
         )
         pending_requests = cur.fetchone()['total']
 
-        # آخر التقييمات
         cur.execute("""
             SELECT e.*, s.name as student_name 
             FROM daily_evaluations e
@@ -4460,7 +4886,6 @@ def admin_dashboard():
         """)
         recent_evaluations = cur.fetchall()
 
-        # معلومات المشرف
         cur.execute("SELECT * FROM admins WHERE id = %s", (admin_id,))
         admin = cur.fetchone()
         cur.close()
@@ -4488,7 +4913,6 @@ def manage_students():
         flash('الرجاء تسجيل الدخول أولاً', 'danger')
         return redirect(url_for('admin_login'))
 
-    # معالجة GET actions
     delete_id = request.args.get('delete')
     if delete_id:
         conn = get_db()
@@ -4525,7 +4949,6 @@ def manage_students():
             conn.close()
         return redirect(url_for('manage_students'))
 
-    # معالجة POST (تحديث)
     if request.method == 'POST':
         student_id = request.form.get('update_student')
         if student_id:
@@ -4557,7 +4980,6 @@ def manage_students():
                 conn.close()
             return redirect(url_for('manage_students'))
 
-    # عرض القائمة
     status_filter = request.args.get('status', 'all')
     conn = get_db()
     try:
@@ -4571,7 +4993,6 @@ def manage_students():
             )
         students = cur.fetchall()
 
-        # معلومات المشرف للقائمة
         cur.execute("SELECT * FROM admins WHERE id = %s", (session['admin_id'],))
         admin = cur.fetchone()
         cur.close()
@@ -4593,13 +5014,11 @@ def registration_requests():
         flash('الرجاء تسجيل الدخول أولاً', 'danger')
         return redirect(url_for('admin_login'))
 
-    # معالجة القبول والرفض
     accept_id = request.args.get('accept')
     if accept_id:
         conn = get_db()
         try:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            # جلب الطلب
             cur.execute(
                 "SELECT * FROM registration_requests WHERE id = %s AND status = 'pending'",
                 (accept_id,)
@@ -4607,14 +5026,12 @@ def registration_requests():
             req = cur.fetchone()
 
             if req:
-                # حساب الترتيب
                 cur.execute(
                     "SELECT COUNT(*) as total FROM students WHERE status = 'active'"
                 )
                 rank_result = cur.fetchone()
                 rank = rank_result['total'] + 1
 
-                # إضافة الطالب
                 cur2 = conn.cursor()
                 cur2.execute("""
                     INSERT INTO students (name, email, password, phone, parent_phone, address, rank, status)
@@ -4622,7 +5039,6 @@ def registration_requests():
                 """, (req['name'], req['email'], req['password'], req['phone'], 
                       req['parent_phone'], req['address'], rank))
 
-                # تحديث حالة الطلب
                 cur2.execute(
                     "UPDATE registration_requests SET status = 'accepted' WHERE id = %s",
                     (accept_id,)
@@ -4697,7 +5113,6 @@ def evaluation():
         )
         students = cur.fetchall()
 
-        # جلب التقييمات الحالية لليوم
         cur.execute(
             "SELECT * FROM daily_evaluations WHERE date = %s",
             (today,)
@@ -4708,7 +5123,6 @@ def evaluation():
         for ev in existing:
             evaluations[str(ev['student_id'])] = dict(ev)
 
-        # عدد التقييمات غير المرسلة
         cur.execute(
             "SELECT COUNT(*) as total FROM daily_evaluations WHERE date = %s AND sent = FALSE",
             (today,)
@@ -4718,9 +5132,7 @@ def evaluation():
         cur.execute("SELECT * FROM admins WHERE id = %s", (admin_id,))
         admin = cur.fetchone()
 
-        # معالجة POST
         if request.method == 'POST':
-            # حفظ التقييمات
             if request.form.get('save_evaluations'):
                 ev_data = parse_nested_form('evaluations')
 
@@ -4736,7 +5148,6 @@ def evaluation():
 
                     cur2 = conn.cursor()
                     if ev_id:
-                        # تحديث
                         cur2.execute("""
                             UPDATE daily_evaluations 
                             SET curr_save = %s, score_save = %s, curr_rev = %s, score_rev = %s, 
@@ -4744,7 +5155,6 @@ def evaluation():
                             WHERE id = %s AND student_id = %s
                         """, (curr_save, score_save, curr_rev, score_rev, homework_score, notes, ev_id, student_id))
                     else:
-                        # إدراج جديد
                         cur2.execute("""
                             INSERT INTO daily_evaluations (student_id, date, curr_save, score_save, curr_rev, score_rev, homework_score, notes)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -4756,7 +5166,6 @@ def evaluation():
                 cur.close()
                 return redirect(url_for('evaluation'))
 
-            # إرسال التقييمات
             elif request.form.get('send_evaluations'):
                 cur.execute("""
                     SELECT e.*, s.name as student_name 
@@ -4772,7 +5181,6 @@ def evaluation():
 
                 sent_count = 0
                 for ev in unsent:
-                    # إنشاء رسالة
                     msg_lines = []
                     msg_lines.append(f"📊 تقييم اليوم {today}")
                     msg_lines.append("")
@@ -4792,14 +5200,12 @@ def evaluation():
 
                     message = "\n".join(msg_lines)
 
-                    # إرسال الرسالة
                     cur2 = conn.cursor()
                     cur2.execute("""
                         INSERT INTO messages (sender_id, sender_type, receiver_id, message)
                         VALUES (%s, 'admin', %s, %s)
                     """, (admin_id, ev['student_id'], message))
 
-                    # تحديث حالة التقييم
                     cur2.execute(
                         "UPDATE daily_evaluations SET sent = TRUE WHERE id = %s",
                         (ev['id'],)
@@ -4842,7 +5248,6 @@ def homework():
         )
         students = cur.fetchall()
 
-        # جلب الواجبات الحالية لليوم
         cur.execute(
             "SELECT * FROM homework WHERE date = %s",
             (today,)
@@ -4853,7 +5258,6 @@ def homework():
         for hw in existing:
             homework_data[str(hw['student_id'])] = dict(hw)
 
-        # عدد الواجبات غير المرسلة
         cur.execute(
             "SELECT COUNT(*) as total FROM homework WHERE sent = FALSE"
         )
@@ -4863,7 +5267,6 @@ def homework():
         admin = cur.fetchone()
 
         if request.method == 'POST':
-            # حفظ الواجبات
             if request.form.get('save_homework'):
                 hw_data = parse_nested_form('homework')
 
@@ -4893,7 +5296,6 @@ def homework():
                 cur.close()
                 return redirect(url_for('homework'))
 
-            # إرسال الواجبات
             elif request.form.get('send_homework'):
                 cur.execute("""
                     SELECT h.*, s.name as student_name 
@@ -4960,7 +5362,6 @@ def competitions():
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # معالجة GET actions
         delete_id = request.args.get('delete')
         if delete_id:
             cur2 = conn.cursor()
@@ -4986,7 +5387,6 @@ def competitions():
             cur.close()
             return redirect(url_for('competitions'))
 
-        # معالجة POST - إضافة مسابقة
         if request.method == 'POST' and request.form.get('action') == 'add_competition':
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
@@ -5057,7 +5457,6 @@ def competition_grades():
         )
         students = cur.fetchall()
 
-        # جلب الدرجات الحالية
         grades = {}
         cur.execute(
             "SELECT * FROM competition_grades WHERE competition_id = %s",
@@ -5070,7 +5469,6 @@ def competition_grades():
         cur.execute("SELECT * FROM admins WHERE id = %s", (session['admin_id'],))
         admin = cur.fetchone()
 
-        # معالجة POST - حفظ الدرجات
         if request.method == 'POST':
             pattern = re.compile(r'grades\[(\d+)\]')
             for key, value in request.form.items():
@@ -5142,7 +5540,6 @@ def messages():
             selected_student = cur.fetchone()
 
             if selected_student:
-                # جلب الرسائل بين المشرف وهذا الطالب
                 cur.execute("""
                     SELECT m.*, 
                            CASE 
@@ -5156,10 +5553,9 @@ def messages():
                 """, (admin_id, student_id, student_id, admin_id))
                 messages_list = cur.fetchall()
 
-                # تحديث حالة الرسائل غير المقروءة من الطالب
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
+                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
                     (student_id, admin_id)
                 )
                 conn.commit()
@@ -5168,7 +5564,6 @@ def messages():
         cur.execute("SELECT * FROM admins WHERE id = %s", (admin_id,))
         admin = cur.fetchone()
 
-        # معالجة POST - إرسال رسالة
         if request.method == 'POST' and request.form.get('send_message'):
             receiver_id = request.form.get('receiver_id')
             message_text = request.form.get('message', '').strip()
@@ -5276,41 +5671,35 @@ def student_dashboard():
             flash('الطالب غير موجود', 'danger')
             return redirect(url_for('logout'))
 
-        # تقييم اليوم
         cur.execute(
             "SELECT * FROM daily_evaluations WHERE student_id = %s AND date = %s AND sent = TRUE",
             (student_id, today)
         )
         today_evaluation = cur.fetchone()
 
-        # عدد الواجبات غير المرسلة للطالب
         cur.execute(
             "SELECT COUNT(*) as total FROM homework WHERE student_id = %s AND sent = FALSE",
             (student_id,)
         )
         homework_count = cur.fetchone()['total']
 
-        # عدد المسابقات
         cur.execute(
             "SELECT COUNT(*) as total FROM competitions WHERE active = 1"
         )
         competitions_count = cur.fetchone()['total']
 
-        # الرسائل غير المقروءة
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = FALSE AND sender_type = 'admin'",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = 0 AND sender_type = 'admin'",
             (student_id,)
         )
         messages_count = cur.fetchone()['total']
 
-        # آخر الواجبات
         cur.execute(
             "SELECT * FROM homework WHERE student_id = %s ORDER BY date DESC LIMIT 5",
             (student_id,)
         )
         recent_homework = cur.fetchall()
 
-        # إحصائيات الدرجات
         cur.execute(
             "SELECT * FROM daily_evaluations WHERE student_id = %s AND sent = TRUE",
             (student_id,)
@@ -5385,7 +5774,6 @@ def student_report():
         cur.execute("SELECT * FROM students WHERE id = %s", (student_id,))
         student = cur.fetchone()
 
-        # جميع التقييمات
         cur.execute(
             "SELECT * FROM daily_evaluations WHERE student_id = %s AND sent = TRUE ORDER BY date DESC",
             (student_id,)
@@ -5408,7 +5796,6 @@ def student_report():
         avg_rev = round(total_rev / total_evaluations, 1) if total_evaluations > 0 else 0
         avg_homework = round(total_hw / total_evaluations, 1) if total_evaluations > 0 else 0
 
-        # درجات المسابقات
         cur.execute("""
             SELECT SUM(cg.grade) as total 
             FROM competition_grades cg
@@ -5453,7 +5840,6 @@ def student_competitions():
         )
         competitions = cur.fetchall()
 
-        # جلب درجات الطالب
         grades = {}
         for comp in competitions:
             cur.execute(
@@ -5483,7 +5869,7 @@ def student_messages():
         return redirect(url_for('student_login'))
 
     student_id = session['student_id']
-    admin_id = 1  # المشرف الرئيسي
+    admin_id = 1
 
     conn = get_db()
     try:
@@ -5491,21 +5877,18 @@ def student_messages():
         cur.execute("SELECT * FROM students WHERE id = %s", (student_id,))
         student = cur.fetchone()
 
-        # قائمة الطلاب الآخرين للتواصل
         cur.execute(
             "SELECT * FROM students WHERE id != %s AND status = 'active' ORDER BY name ASC",
             (student_id,)
         )
         other_students = cur.fetchall()
 
-        # معالجة عرض المحادثة
         selected_type = request.args.get('type', 'admin')
         selected_id = request.args.get('id')
         selected_other = None
         messages_list = []
 
         if selected_type == 'admin':
-            # محادثة مع المشرف
             selected_other = {'type': 'admin', 'name': 'المشرف'}
             cur.execute("""
                 SELECT m.*, 
@@ -5520,17 +5903,15 @@ def student_messages():
             """, (student_id, admin_id, admin_id, student_id))
             messages_list = cur.fetchall()
 
-            # تحديث حالة الرسائل المقروءة
             cur2 = conn.cursor()
             cur2.execute(
-                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = FALSE",
+                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = 0",
                 (admin_id, student_id)
             )
             conn.commit()
             cur2.close()
 
         elif selected_id:
-            # محادثة مع طالب آخر
             selected_id = int(selected_id)
             cur.execute(
                 "SELECT * FROM students WHERE id = %s AND status = 'active'",
@@ -5553,16 +5934,14 @@ def student_messages():
                 """, (student_id, student_id, selected_id, selected_id, student_id))
                 messages_list = cur.fetchall()
 
-                # تحديث حالة الرسائل المقروءة
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
+                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
                     (selected_id, student_id)
                 )
                 conn.commit()
                 cur2.close()
 
-        # معالجة POST - إرسال رسالة
         if request.method == 'POST' and request.form.get('send_message'):
             receiver_type = request.form.get('receiver_type')
             receiver_id = request.form.get('receiver_id')
@@ -5575,7 +5954,6 @@ def student_messages():
 
             cur2 = conn.cursor()
             if receiver_type == 'admin':
-                # إرسال للمشرف
                 cur2.execute("""
                     INSERT INTO messages (sender_id, sender_type, receiver_id, message)
                     VALUES (%s, 'student', %s, %s)
@@ -5583,7 +5961,6 @@ def student_messages():
                 flash('تم إرسال الرسالة للمشرف', 'success')
 
             elif receiver_type == 'student' and receiver_id:
-                # إرسال لطالب آخر
                 receiver_id = int(receiver_id)
                 if receiver_id != student_id:
                     cur2.execute("""
@@ -5668,7 +6045,7 @@ def student_profile():
         conn.close()
 
 
-# تهيئة قاعدة البيانات عند بدء التشغيل (للإنتاج أيضاً)
+# تهيئة قاعدة البيانات عند بدء التشغيل
 try:
     init_db()
     print("✅ تم إنشاء/تحديث قاعدة البيانات PostgreSQL بنجاح!")
