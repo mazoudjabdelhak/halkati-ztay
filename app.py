@@ -250,7 +250,6 @@ ADMIN_LOGIN_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>دخول المشرف</title>
     <style>
@@ -389,7 +388,6 @@ STUDENT_LOGIN_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>دخول الطالب</title>
     <style>
@@ -528,7 +526,6 @@ STUDENT_REGISTER_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل طالب جديد</title>
     <style>
@@ -693,7 +690,6 @@ ADMIN_DASHBOARD_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
     <style>
@@ -980,7 +976,6 @@ MANAGE_STUDENTS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة الطلاب</title>
     <style>
@@ -1242,7 +1237,6 @@ REGISTRATION_REQUESTS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>طلبات التسجيل</title>
     <style>
@@ -1453,7 +1447,6 @@ EVALUATION_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>التقييم اليومي</title>
     <style>
@@ -1739,7 +1732,6 @@ HOMEWORK_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الواجبات</title>
     <style>
@@ -1995,7 +1987,6 @@ COMPETITIONS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>المسابقات</title>
     <style>
@@ -2240,7 +2231,6 @@ COMPETITION_GRADES_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>درجات المسابقات</title>
     <style>
@@ -2471,7 +2461,6 @@ MESSAGES_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الرسائل</title>
     <style>
@@ -2734,7 +2723,6 @@ STUDENT_DASHBOARD_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة الطالب</title>
     <style>
@@ -3013,7 +3001,6 @@ STUDENT_HOMEWORK_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>واجباتي</title>
     <style>
@@ -3203,7 +3190,6 @@ STUDENT_REPORT_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تقريري</title>
     <style>
@@ -3423,7 +3409,6 @@ STUDENT_COMPETITIONS_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مسابقاتي</title>
     <style>
@@ -3600,7 +3585,6 @@ STUDENT_MESSAGES_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>رسائلي</title>
     <style>
@@ -3886,7 +3870,6 @@ STUDENT_PROFILE_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملفي الشخصي</title>
     <style>
@@ -4089,7 +4072,6 @@ ADMIN_PROFILE_HTML = '''
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/static/2.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ملف المشرف</title>
     <style>
@@ -4440,7 +4422,7 @@ def admin_dashboard():
 
         # الرسائل غير المقروءة من الطلاب للمشرف
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = 0",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = FALSE",
             (admin_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -5159,7 +5141,7 @@ def messages():
                 # تحديث حالة الرسائل غير المقروءة من الطالب
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
+                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
                     (student_id, admin_id)
                 )
                 conn.commit()
@@ -5298,7 +5280,7 @@ def student_dashboard():
 
         # الرسائل غير المقروءة
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = 0 AND sender_type = 'admin'",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = FALSE AND sender_type = 'admin'",
             (student_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -5523,7 +5505,7 @@ def student_messages():
             # تحديث حالة الرسائل المقروءة
             cur2 = conn.cursor()
             cur2.execute(
-                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = 0",
+                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = FALSE",
                 (admin_id, student_id)
             )
             conn.commit()
@@ -5556,7 +5538,7 @@ def student_messages():
                 # تحديث حالة الرسائل المقروءة
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
+                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
                     (selected_id, student_id)
                 )
                 conn.commit()
