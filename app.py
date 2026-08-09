@@ -3197,7 +3197,7 @@ MESSAGES_HTML = '''
                         {% else %}
                         👨‍🎓 {{ msg.sender_name or 'طالب' }}
                         {% endif %}
-                        <span class="time">{{ msg.created_at[11:16] if msg.created_at else '' }}</span>
+                        <span class="time">{{ msg.created_at.strftime('%H:%M') if msg.created_at else '' }}</span>
                         {% if not msg.is_read and msg.sender_type != 'admin' %}
                         <span class="badge">جديد</span>
                         {% endif %}
@@ -4341,7 +4341,7 @@ STUDENT_MESSAGES_HTML = '''
                         {% else %}
                         👨‍🎓 {{ msg.sender_name or 'طالب' }}
                         {% endif %}
-                        <span class="time">{{ msg.created_at[11:16] if msg.created_at else '' }}</span>
+                        <span class="time">{{ msg.created_at.strftime('%H:%M') if msg.created_at else '' }}</span>
                         {% if not msg.is_read and msg.sender_id != student_id %}
                         <span class="badge">جديد</span>
                         {% endif %}
