@@ -243,7 +243,7 @@ HOME_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>حلقتي زتاي — نظام إدارة الحلقة القرآنية</title>
-    <link rel="icon" href="static/2.png" type="image/png">
+    <link rel="icon" href="https://mazoudjabdelhak.github.io/halkati-ztay/static/2.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
