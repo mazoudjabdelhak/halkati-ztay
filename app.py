@@ -56,6 +56,18 @@ def query_all(conn, sql, params=()):
     cur.close()
     return rows
 
+
+# === دالة مساعدة لتحويل القيم المنطقية لـ PostgreSQL ===
+def pg_bool(val):
+    """تحويل قيمة Python إلى قيمة PostgreSQL boolean"""
+    if isinstance(val, bool):
+        return 'TRUE' if val else 'FALSE'
+    if isinstance(val, int):
+        return 'TRUE' if val else 'FALSE'
+    if isinstance(val, str):
+        return 'TRUE' if val.lower() in ('1', 'true', 'yes', 'on') else 'FALSE'
+    return 'FALSE'
+
 def execute_sql(conn, sql, params=()):
     cur = conn.cursor()
     cur.execute(sql, params)
@@ -4884,7 +4896,7 @@ def admin_dashboard():
         unsent_homework = cur.fetchone()['total']
 
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = 0",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND sender_type = 'student' AND is_read = FALSE",
             (admin_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -5572,7 +5584,7 @@ def messages():
 
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
+                    "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
                     (student_id, admin_id)
                 )
                 conn.commit()
@@ -5701,12 +5713,12 @@ def student_dashboard():
         homework_count = cur.fetchone()['total']
 
         cur.execute(
-            "SELECT COUNT(*) as total FROM competitions WHERE active = 1"
+            "SELECT COUNT(*) as total FROM competitions WHERE active = TRUE"
         )
         competitions_count = cur.fetchone()['total']
 
         cur.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = 0 AND sender_type = 'admin'",
+            "SELECT COUNT(*) as total FROM messages WHERE receiver_id = %s AND is_read = FALSE AND sender_type = 'admin'",
             (student_id,)
         )
         messages_count = cur.fetchone()['total']
@@ -5817,7 +5829,7 @@ def student_report():
             SELECT SUM(cg.grade) as total 
             FROM competition_grades cg
             JOIN competitions c ON c.id = cg.competition_id
-            WHERE cg.student_id = %s AND c.active = 1
+            WHERE cg.student_id = %s AND c.active = TRUE
         """, (student_id,))
         comp_grades = cur.fetchone()
         competitions_grade = comp_grades['total'] or 0
@@ -5853,7 +5865,7 @@ def student_competitions():
         student = cur.fetchone()
 
         cur.execute(
-            "SELECT * FROM competitions WHERE active = 1 ORDER BY date DESC"
+            "SELECT * FROM competitions WHERE active = TRUE ORDER BY date DESC"
         )
         competitions = cur.fetchall()
 
@@ -5922,7 +5934,7 @@ def student_messages():
 
             cur2 = conn.cursor()
             cur2.execute(
-                "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = 0",
+                "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'admin' AND receiver_id = %s AND is_read = FALSE",
                 (admin_id, student_id)
             )
             conn.commit()
@@ -5953,7 +5965,7 @@ def student_messages():
 
                 cur2 = conn.cursor()
                 cur2.execute(
-                    "UPDATE messages SET is_read = 1 WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = 0",
+                    "UPDATE messages SET is_read = TRUE WHERE sender_id = %s AND sender_type = 'student' AND receiver_id = %s AND is_read = FALSE",
                     (selected_id, student_id)
                 )
                 conn.commit()
