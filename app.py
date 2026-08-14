@@ -224,11 +224,16 @@ def get_students(status=None):
     conn = get_db()
     if status:
         students = query_all(conn,
-            "SELECT * FROM students WHERE status = %s ORDER BY rank ASC, name ASC", 
+            "SELECT * FROM students WHERE status = %s ORDER BY CASE WHEN id IN (SELECT id FROM students ORDER BY id ASC LIMIT 3) THEN id ELSE 999999 END, rank ASC, name ASC", 
             (status,))
     else:
         students = query_all(conn,
-            "SELECT * FROM students ORDER BY rank ASC, name ASC")
+        # Récupérer les 3 premiers étudiants (fixes)
+        cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
+        fixed_rows = cur.fetchall()
+        fixed_ids = [row['id'] for row in fixed_rows]
+
+            "SELECT * FROM students ORDER BY CASE WHEN id IN (SELECT id FROM students ORDER BY id ASC LIMIT 3) THEN id ELSE 999999 END, rank ASC, name ASC")
     conn.close()
     return students
 
@@ -1146,15 +1151,15 @@ STUDENT_REGISTER_HTML = '''
             </div>
             <div class="form-group">
                 <label>رقم الهاتف</label>
-                <input type="text" name="phone" placeholder="أدخل رقم الهاتف">
+                <input type="text" name="phone" required placeholder="أدخل رقم الهاتف">
             </div>
             <div class="form-group">
                 <label>هاتف ولي الأمر</label>
-                <input type="text" name="parent_phone" placeholder="أدخل هاتف ولي الأمر">
+                <input type="text" name="parent_phone" required placeholder="أدخل هاتف ولي الأمر">
             </div>
             <div class="form-group">
                 <label>العنوان</label>
-                <textarea name="address" placeholder="أدخل العنوان"></textarea>
+                <textarea name="address" required placeholder="أدخل العنوان"></textarea>
             </div>
             <button type="submit" class="btn">تقديم طلب التسجيل</button>
         </form>
@@ -1680,8 +1685,13 @@ MANAGE_STUDENTS_HTML = '''
                                            style="width:100%;min-width:80px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;">
                                 </td>
                                 <td>
+                                    {% if student.id in fixed_ids %}
                                     <input type="number" name="rank_{{ student.id }}" value="{{ student.rank }}"
                                            style="width:50px;padding:4px 8px;border:1px solid #ddd;border-radius:4px;" min="0">
+                                    {% else %}
+                                    <span style="font-weight:bold;color:var(--accent);">{{ student.rank }}</span>
+                                    <input type="hidden" name="rank_{{ student.id }}" value="{{ student.rank }}">
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <select name="status_{{ student.id }}" style="padding:4px 8px;border:1px solid #ddd;border-radius:4px;">
@@ -1900,7 +1910,7 @@ REGISTRATION_REQUESTS_HTML = '''
                             <td>{{ req.phone or '-' }}</td>
                             <td>{{ req.parent_phone or '-' }}</td>
                             <td>{{ req.address or '-' }}</td>
-                            <td>{{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '-' }}</td>
+                            <td>{{ req.created_at[:10] }}</td>
                             <td>
                                 <span class="status-badge status-{{ req.status }}">
                                     {% if req.status == 'pending' %}⏳ معلق
@@ -4819,7 +4829,7 @@ def student_register():
         parent_phone = request.form.get('parent_phone', '').strip()
         address = request.form.get('address', '').strip()
 
-        if not name or not email or not password:
+        if not name or not email or not password or not phone or not parent_phone or not address:
             flash('الرجاء ملء جميع الحقول المطلوبة', 'danger')
             return render_template_string(STUDENT_REGISTER_HTML)
 
@@ -5029,12 +5039,30 @@ def manage_students():
                 cur = conn.cursor()
                 cur.execute("""
                     UPDATE students 
-                    SET name = %s, phone = %s, rank = %s, status = %s, payment_status = %s
-                    WHERE id = %s
-                """, (name, phone, rank, status, payment, student_id))
-                conn.commit()
-                cur.close()
-                flash('تم تحديث بيانات الطالب بنجاح', 'success')
+                    conn = get_db()
+                    try:
+                        cur = conn.cursor(cursor_factory=RealDictCursor)
+                        cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
+                        fixed_rows = cur.fetchall()
+                        fixed_ids = [row['id'] for row in fixed_rows]
+                        cur.close()
+
+                        cur = conn.cursor()
+                        if student_id in fixed_ids:
+                            cur.execute("""
+                                UPDATE students 
+                                SET name = %s, phone = %s, status = %s, payment_status = %s
+                                WHERE id = %s
+                            """, (name, phone, status, payment, student_id))
+                        else:
+                            cur.execute("""
+                                UPDATE students 
+                                SET name = %s, phone = %s, rank = %s, status = %s, payment_status = %s
+                                WHERE id = %s
+                            """, (name, phone, rank, status, payment, student_id))
+                        conn.commit()
+                        cur.close()
+                        flash('تم تحديث بيانات الطالب بنجاح', 'success')
             except Exception as e:
                 flash(f'خطأ في التحديث: {str(e)}', 'danger')
             finally:
@@ -5046,10 +5074,15 @@ def manage_students():
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         if status_filter == 'all':
-            cur.execute("SELECT * FROM students ORDER BY rank ASC, name ASC")
+        # Récupérer les 3 premiers étudiants (fixes)
+        cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
+        fixed_rows = cur.fetchall()
+        fixed_ids = [row['id'] for row in fixed_rows]
+
+            cur.execute("SELECT * FROM students ORDER BY CASE WHEN id IN (SELECT id FROM students ORDER BY id ASC LIMIT 3) THEN id ELSE 999999 END, rank ASC, name ASC")
         else:
             cur.execute(
-                "SELECT * FROM students WHERE status = %s ORDER BY rank ASC, name ASC",
+                "SELECT * FROM students WHERE status = %s ORDER BY CASE WHEN id IN (SELECT id FROM students ORDER BY id ASC LIMIT 3) THEN id ELSE 999999 END, rank ASC, name ASC",
                 (status_filter,)
             )
         students = cur.fetchall()
@@ -5088,10 +5121,10 @@ def registration_requests():
 
             if req:
                 cur.execute(
-                    "SELECT COUNT(*) as total FROM students WHERE status = 'active'"
+                    "SELECT COUNT(*) as total FROM students WHERE status = 'active' AND id NOT IN (SELECT id FROM students ORDER BY id ASC LIMIT 3)"
                 )
                 rank_result = cur.fetchone()
-                rank = rank_result['total'] + 1
+                rank = rank_result['total'] + 4
 
                 cur2 = conn.cursor()
                 cur2.execute("""
@@ -5151,6 +5184,7 @@ def registration_requests():
             requests=requests,
             admin=admin,
             datetime=datetime
+            fixed_ids=fixed_ids,
         )
     finally:
         conn.close()
@@ -5170,7 +5204,7 @@ def evaluation():
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "SELECT * FROM students WHERE status = 'active' ORDER BY rank ASC, name ASC"
+            "SELECT * FROM students WHERE status = 'active' ORDER BY CASE WHEN email = 'yacinezaoui2010@gmail.com' THEN 0 ELSE 1 END, rank ASC, name ASC"
         )
         students = cur.fetchall()
 
@@ -5305,7 +5339,7 @@ def homework():
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "SELECT * FROM students WHERE status = 'active' ORDER BY rank ASC, name ASC"
+            "SELECT * FROM students WHERE status = 'active' ORDER BY CASE WHEN email = 'yacinezaoui2010@gmail.com' THEN 0 ELSE 1 END, rank ASC, name ASC"
         )
         students = cur.fetchall()
 
@@ -5482,6 +5516,7 @@ def competitions():
             competitions=competitions_list,
             admin=admin,
             datetime=datetime
+            fixed_ids=fixed_ids,
         )
     finally:
         conn.close()
@@ -5514,7 +5549,7 @@ def competition_grades():
             return redirect(url_for('competitions'))
 
         cur.execute(
-            "SELECT * FROM students WHERE status = 'active' ORDER BY rank ASC, name ASC"
+            "SELECT * FROM students WHERE status = 'active' ORDER BY CASE WHEN email = 'yacinezaoui2010@gmail.com' THEN 0 ELSE 1 END, rank ASC, name ASC"
         )
         students = cur.fetchall()
 
@@ -5817,6 +5852,7 @@ def student_homework():
             student=student,
             homework=homework,
             datetime=datetime
+            fixed_ids=fixed_ids,
         )
     finally:
         conn.close()
