@@ -1900,7 +1900,7 @@ REGISTRATION_REQUESTS_HTML = '''
                             <td>{{ req.phone or '-' }}</td>
                             <td>{{ req.parent_phone or '-' }}</td>
                             <td>{{ req.address or '-' }}</td>
-                            <td>{{ req.created_at[:10] }}</td>
+                            <td>{{ req.created_at.strftime('%Y-%m-%d') if req.created_at else '-' }}</td>
                             <td>
                                 <span class="status-badge status-{{ req.status }}">
                                     {% if req.status == 'pending' %}⏳ معلق
