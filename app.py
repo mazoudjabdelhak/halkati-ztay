@@ -228,11 +228,6 @@ def get_students(status=None):
             (status,))
     else:
         students = query_all(conn,
-        # Récupérer les 3 premiers étudiants (fixes)
-        cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
-        fixed_rows = cur.fetchall()
-        fixed_ids = [row['id'] for row in fixed_rows]
-
             "SELECT * FROM students ORDER BY CASE WHEN id IN (SELECT id FROM students ORDER BY id ASC LIMIT 3) THEN id ELSE 999999 END, rank ASC, name ASC")
     conn.close()
     return students
@@ -5036,33 +5031,28 @@ def manage_students():
 
             conn = get_db()
             try:
-                cur = conn.cursor()
-                cur.execute("""
-                    UPDATE students 
-                    conn = get_db()
-                    try:
-                        cur = conn.cursor(cursor_factory=RealDictCursor)
-                        cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
-                        fixed_rows = cur.fetchall()
-                        fixed_ids = [row['id'] for row in fixed_rows]
-                        cur.close()
+                cur = conn.cursor(cursor_factory=RealDictCursor)
+                cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
+                fixed_rows = cur.fetchall()
+                fixed_ids = [row['id'] for row in fixed_rows]
+                cur.close()
 
-                        cur = conn.cursor()
-                        if student_id in fixed_ids:
-                            cur.execute("""
-                                UPDATE students 
-                                SET name = %s, phone = %s, status = %s, payment_status = %s
-                                WHERE id = %s
-                            """, (name, phone, status, payment, student_id))
-                        else:
-                            cur.execute("""
-                                UPDATE students 
-                                SET name = %s, phone = %s, rank = %s, status = %s, payment_status = %s
-                                WHERE id = %s
-                            """, (name, phone, rank, status, payment, student_id))
-                        conn.commit()
-                        cur.close()
-                        flash('تم تحديث بيانات الطالب بنجاح', 'success')
+                cur = conn.cursor()
+                if student_id in fixed_ids:
+                    cur.execute("""
+                        UPDATE students 
+                        SET name = %s, phone = %s, status = %s, payment_status = %s
+                        WHERE id = %s
+                    """, (name, phone, status, payment, student_id))
+                else:
+                    cur.execute("""
+                        UPDATE students 
+                        SET name = %s, phone = %s, rank = %s, status = %s, payment_status = %s
+                        WHERE id = %s
+                    """, (name, phone, rank, status, payment, student_id))
+                conn.commit()
+                cur.close()
+                flash('تم تحديث بيانات الطالب بنجاح', 'success')
             except Exception as e:
                 flash(f'خطأ في التحديث: {str(e)}', 'danger')
             finally:
@@ -5073,12 +5063,12 @@ def manage_students():
     conn = get_db()
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        if status_filter == 'all':
         # Récupérer les 3 premiers étudiants (fixes)
         cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
         fixed_rows = cur.fetchall()
         fixed_ids = [row['id'] for row in fixed_rows]
 
+        if status_filter == 'all':
             cur.execute("SELECT * FROM students ORDER BY CASE WHEN id IN (SELECT id FROM students ORDER BY id ASC LIMIT 3) THEN id ELSE 999999 END, rank ASC, name ASC")
         else:
             cur.execute(
@@ -5183,7 +5173,7 @@ def registration_requests():
             REGISTRATION_REQUESTS_HTML,
             requests=requests,
             admin=admin,
-            datetime=datetime
+            datetime=datetime,
             fixed_ids=fixed_ids,
         )
     finally:
@@ -5515,7 +5505,7 @@ def competitions():
             COMPETITIONS_HTML,
             competitions=competitions_list,
             admin=admin,
-            datetime=datetime
+            datetime=datetime,
             fixed_ids=fixed_ids,
         )
     finally:
@@ -5851,7 +5841,7 @@ def student_homework():
             STUDENT_HOMEWORK_HTML,
             student=student,
             homework=homework,
-            datetime=datetime
+            datetime=datetime,
             fixed_ids=fixed_ids,
         )
     finally:
