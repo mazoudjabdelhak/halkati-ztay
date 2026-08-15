@@ -5174,7 +5174,7 @@ def registration_requests():
             requests=requests,
             admin=admin,
             datetime=datetime,
-            fixed_ids=fixed_ids,
+            fixed_ids=[],
         )
     finally:
         conn.close()
