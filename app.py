@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import re
