@@ -5447,6 +5447,11 @@ def competitions():
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
+        # تعريف المتغير fixed_ids - جلب أول 3 طلاب (المثبتين)
+        cur.execute("SELECT id FROM students ORDER BY id ASC LIMIT 3")
+        fixed_rows = cur.fetchall()
+        fixed_ids = [row['id'] for row in fixed_rows]
+
         delete_id = request.args.get('delete')
         if delete_id:
             cur2 = conn.cursor()
